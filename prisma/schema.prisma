@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id             String          @id @default(uuid())
+  name           String
+  email          String          @unique
+  password       String          // Hashed password
+  role           String          @default("STUDENT") // ADMIN, TEACHER, STUDENT
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations to Profiles
+  studentProfile StudentProfile?
+  teacherProfile TeacherProfile?
+}
+
+model StudentProfile {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rollNumber String   @unique
+  classGrade String   // e.g. "Class 10A", "Grade 11B"
+  
+  marks      Mark[]
+}
+
+model TeacherProfile {
+  id       String    @id @default(uuid())
+  userId   String    @unique
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  subjects Subject[]
+}
+
+model Subject {
+  id               String          @id @default(uuid())
+  name             String          // e.g. "Mathematics", "Science"
+  teacherProfileId String
+  teacherProfile   TeacherProfile  @relation(fields: [teacherProfileId], references: [id])
+  
+  marks            Mark[]
+}
+
+model Mark {
+  id            String         @id @default(uuid())
+  studentId     String
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId     String
+  subject       Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  examType      String         // e.g. "Quiz 1", "Midterm", "Final"
+  marksObtained Float
+  maxMarks      Float          @default(100)
+  term          String         // e.g. "Term 1", "Term 2"
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([studentId, subjectId, examType, term])
+}
