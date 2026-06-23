@@ -4,9 +4,13 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding database...');
+  console.log('Seeding database with SaaS metadata...');
 
   // Clean existing data
+  await prisma.activityLog.deleteMany({});
+  await prisma.loginHistory.deleteMany({});
+  await prisma.badge.deleteMany({});
+  await prisma.attendanceRecord.deleteMany({});
   await prisma.mark.deleteMany({});
   await prisma.subject.deleteMany({});
   await prisma.teacherProfile.deleteMany({});
@@ -75,6 +79,15 @@ async function main() {
       userId: student1User.id,
       rollNumber: 'S202601',
       classGrade: 'Grade 10A',
+      dob: new Date('2010-05-15'),
+      gender: 'Male',
+      phone: '+1 (555) 123-4567',
+      address: '742 Evergreen Terrace, Springfield',
+      photoUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&h=150&fit=crop&crop=face',
+      academicHistory: JSON.stringify([
+        { year: '2024', grade: '9th Grade', school: 'Springfield Middle School', GPA: '3.4' },
+        { year: '2025', grade: '10th Grade (Term 1)', school: 'Springfield High School', GPA: '3.6' }
+      ])
     },
   });
   console.log(`Created Student 1: ${student1User.email}`);
@@ -94,6 +107,15 @@ async function main() {
       userId: student2User.id,
       rollNumber: 'S202602',
       classGrade: 'Grade 10A',
+      dob: new Date('2010-09-22'),
+      gender: 'Female',
+      phone: '+1 (555) 987-6543',
+      address: '12 Grimmauld Place, London',
+      photoUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face',
+      academicHistory: JSON.stringify([
+        { year: '2024', grade: '9th Grade', school: 'Hogwarts High School', GPA: '3.9' },
+        { year: '2025', grade: '10th Grade (Term 1)', school: 'London Academy', GPA: '4.0' }
+      ])
     },
   });
   console.log(`Created Student 2: ${student2User.email}`);
@@ -173,6 +195,90 @@ async function main() {
       },
     ],
   });
+
+  // 6. Add Attendance Records (Past 30 Days)
+  const attendanceData1: any[] = [];
+  const attendanceData2: any[] = [];
+  const today = new Date();
+  
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    // Skip weekends
+    if (date.getDay() === 0 || date.getDay() === 6) continue;
+
+    // Student 1 (Alex Rivera) - 90% attendance, some LATE, some ABSENT
+    let status1 = 'PRESENT';
+    if (i === 5) status1 = 'ABSENT';
+    else if (i === 15) status1 = 'LATE';
+    else if (i === 22) status1 = 'PRESENT';
+    
+    attendanceData1.push({
+      studentId: student1Profile.id,
+      date: new Date(date.setHours(0,0,0,0)),
+      status: status1
+    });
+
+    // Student 2 (Emily Chen) - 100% attendance
+    attendanceData2.push({
+      studentId: student2Profile.id,
+      date: new Date(date.setHours(0,0,0,0)),
+      status: 'PRESENT'
+    });
+  }
+
+  await prisma.attendanceRecord.createMany({ data: attendanceData1 });
+  await prisma.attendanceRecord.createMany({ data: attendanceData2 });
+  console.log(`Created Attendance records: ${attendanceData1.length} for Alex, ${attendanceData2.length} for Emily`);
+
+  // 7. Add Achievement Badges
+  await prisma.badge.createMany({
+    data: [
+      {
+        studentId: student1Profile.id,
+        name: 'Most Improved Student',
+        description: 'Increased final scores by over 10% in Mathematics.',
+        icon: 'trending-up'
+      },
+      {
+        studentId: student1Profile.id,
+        name: 'Subject Topper',
+        description: 'Earned the highest class grade in Science Midterm.',
+        icon: 'star'
+      },
+      {
+        studentId: student2Profile.id,
+        name: 'Top Performer',
+        description: 'Maintained a GPA of 3.9+ for the current academic term.',
+        icon: 'trophy'
+      },
+      {
+        studentId: student2Profile.id,
+        name: 'Perfect Attendance',
+        description: 'Attended 100% of classes for the current month.',
+        icon: 'calendar'
+      }
+    ]
+  });
+  console.log('Created achievement badges.');
+
+  // 8. Add Security/Audit Logs
+  await prisma.activityLog.create({
+    data: {
+      userId: adminUser.id,
+      action: 'SYSTEM_INITIALIZATION',
+      details: 'Admin user successfully re-seeded the marks database with SaaS analytics profiles.'
+    }
+  });
+
+  await prisma.loginHistory.createMany({
+    data: [
+      { userId: adminUser.id, ipAddress: '127.0.0.1', userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0' },
+      { userId: teacherUser.id, ipAddress: '192.168.1.15', userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/15.6.1' },
+      { userId: student1User.id, ipAddress: '10.0.0.4', userAgent: 'Mozilla/5.0 (Linux; Android 10; K) Chrome/119.0.0.0 Mobile' }
+    ]
+  });
+  console.log('Created security activity and login logs.');
 
   console.log('Database seeded successfully!');
 }

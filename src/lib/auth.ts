@@ -32,6 +32,27 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Incorrect password');
         }
 
+        // Record security audit details on successful credentials authorization
+        try {
+          await db.loginHistory.create({
+            data: {
+              userId: user.id,
+              ipAddress: '127.0.0.1', // local fallback
+              userAgent: 'Credentials Authentication System'
+            }
+          });
+
+          await db.activityLog.create({
+            data: {
+              userId: user.id,
+              action: 'LOGIN',
+              details: `User logged in. Role: ${user.role}`
+            }
+          });
+        } catch (err) {
+          console.error('Failed to log login security audit event:', err);
+        }
+
         return {
           id: user.id,
           name: user.name,

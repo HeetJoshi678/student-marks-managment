@@ -11,7 +11,7 @@ export default async function StudentDashboardPage() {
     redirect('/login');
   }
 
-  // Fetch student profile and marks from DB
+  // Fetch student profile, marks, and badges from DB
   const student = await db.studentProfile.findUnique({
     where: { userId: session.user.id },
     include: {
@@ -19,6 +19,14 @@ export default async function StudentDashboardPage() {
         select: {
           name: true,
           email: true,
+        },
+      },
+      badges: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          icon: true,
         },
       },
       marks: {
@@ -39,8 +47,8 @@ export default async function StudentDashboardPage() {
 
   if (!student) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 bg-slate-900/60 border border-slate-800 rounded-2xl">
-        <h2 className="text-xl font-bold text-white mb-2">Student Profile Missing</h2>
+      <div className="flex flex-col items-center justify-center p-8 bg-white border border-slate-200 rounded-2xl dark:bg-slate-900 dark:border-slate-800">
+        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Student Profile Missing</h2>
         <p className="text-slate-400">
           We could not find a student profile associated with your user account. Please contact an administrator.
         </p>
@@ -50,6 +58,7 @@ export default async function StudentDashboardPage() {
 
   // Convert schema mapping safely to match client component typings
   const studentData = {
+    id: student.id,
     rollNumber: student.rollNumber,
     classGrade: student.classGrade,
     user: {
@@ -57,6 +66,7 @@ export default async function StudentDashboardPage() {
       email: student.user.email,
     },
     marks: student.marks,
+    badges: student.badges,
   };
 
   return <StudentDashboardClient student={studentData} />;

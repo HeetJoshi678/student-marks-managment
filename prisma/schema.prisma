@@ -22,16 +22,31 @@ model User {
   // Relations to Profiles
   studentProfile StudentProfile?
   teacherProfile TeacherProfile?
+  
+  // Security logs
+  activityLogs   ActivityLog[]
+  loginHistories LoginHistory[]
 }
 
 model StudentProfile {
-  id         String   @id @default(uuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rollNumber String   @unique
-  classGrade String   // e.g. "Class 10A", "Grade 11B"
+  id               String             @id @default(uuid())
+  userId           String             @unique
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rollNumber       String             @unique
+  classGrade       String             // e.g. "Class 10A", "Grade 11B"
   
-  marks      Mark[]
+  // New profile metadata
+  photoUrl         String?
+  phone            String?
+  address          String?
+  dob              DateTime?
+  gender           String?
+  academicHistory  String?            // Previous school and grades history JSON/Text
+  
+  // New relational metrics
+  marks            Mark[]
+  attendanceRecords AttendanceRecord[]
+  badges           Badge[]
 }
 
 model TeacherProfile {
@@ -67,4 +82,43 @@ model Mark {
   updatedAt     DateTime       @updatedAt
 
   @@unique([studentId, subjectId, examType, term])
+}
+
+model AttendanceRecord {
+  id         String         @id @default(uuid())
+  studentId  String
+  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date       DateTime
+  status     String         // PRESENT, ABSENT, LATE
+  createdAt  DateTime       @default(now())
+
+  @@unique([studentId, date])
+}
+
+model Badge {
+  id          String         @id @default(uuid())
+  studentId   String
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  name        String         // Top Performer, Most Improved, Perfect Attendance, Subject Topper
+  description String
+  icon        String         // trophy, star, calendar, trending-up
+  awardedAt   DateTime       @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String   // e.g. "UPDATE_MARKS", "LOGIN", "BULK_IMPORT"
+  details   String
+  createdAt DateTime @default(now())
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
 }
